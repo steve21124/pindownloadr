@@ -32,10 +32,11 @@ The only parameter needed is the url of the board e.g.:
 
 For more options run script with -h or --help.
 
-This script uses libs: progressbar, requests.
-Install with pip/easy_install (or use your package manager):
+This script uses some other python libs you need to install:
+
 pip install progressbar
 pip install requests
+pip install pyquery
 
 If you use Python < 2.7 you may need also argparse:
 pip install argparse
