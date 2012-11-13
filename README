@@ -1,1 +1,24 @@
-pinterest big image downloadr written in Python.
+pinterest gfx downloadr written in Python.
+
+On pinterest.com users organize their images in boards (themes if you like).
+If you like the images of such a board this scripts helps you to get all the
+images onto your disk. This script downloads the closeup images (the big ones).
+
+The only parameter needed is the url of the board e.g.:
+
+    pindownloadr -b http://pinterest.com/<username>/<boardname>/
+    pindownloadr -b http://pinterest.com/johnfernandez/outer-limits/
+
+For more options run script with -h or --help.
+
+This script uses libs: progressbar, requests.
+Install with pip/easy_install (or use your package manager):
+pip install progressbar
+pip install requests
+
+If you use Python < 2.7 you may need also argparse:
+pip install argparse
+
+TODO: Some options currently not implemented
+TODO: Not much error handling implemented. So be prepared for strange errors! ;-)
+TODO: Needs more documentation.
