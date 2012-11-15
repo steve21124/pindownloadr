@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Pindownloadr by githubixx</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/githubixx/pindownloadr">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/githubixx/pindownloadr/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/githubixx/pindownloadr/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>Pindownloadr</h1>
+          <p>Download big images from pinterest.com.</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/githubixx">githubixx</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="http://twitter.com/#!/michigangraham">mattgraham</a></span>
+        </div>
+
+        <h1>pinterest gfx downloadr written in Python.</h1>
+
+<p>On pinterest.com users organize their images in boards (themes if you like).
+If you like the images of such a board this scripts helps you to get all the
+images onto your disk. This script downloads the closeup images (the big ones).</p>
+
+<p>The only parameter needed is the url of the board e.g.:</p>
+
+<ul>
+<li><strong>pindownloadr -b <a href="http://pinterest.com/username/boardname/">http://pinterest.com/username/boardname/</a></strong></li>
+<li><strong>pindownloadr -b <a href="http://pinterest.com/johnfernandez/outer-limits/">http://pinterest.com/johnfernandez/outer-limits/</a></strong></li>
+</ul><p>For more options run script with -h or --help.</p>
+
+<p>This script uses some other python libs you need to install:</p>
+
+<ul>
+<li><strong>pip install progressbar</strong></li>
+<li><strong>pip install requests</strong></li>
+<li><strong>pip install pyquery</strong></li>
+</ul><p>If you use Python &lt; 2.7 you may need also argparse:</p>
+
+<ul>
+<li><strong>pip install argparse</strong></li>
+</ul><p>TODO: Some options currently not implemented <br>
+TODO: Not much error handling implemented. So be prepared for strange errors! ;-) <br>
+TODO: Needs more documentation. <br></p>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
