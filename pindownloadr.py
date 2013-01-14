@@ -67,11 +67,10 @@ class CloseupImageFetcher(object):
     The CloseupImageFetcher takes a list of image urls and download the
     images into the save_path.
 
-    The only usefull and public method is
-    - fetchImages()
+    The only usefull and public method is fetchImages()
     """
 
-    def __init__(self, closeup_image_info_list, min_size=25000, save_path='/tmp'):
+    def __init__(self, closeup_image_info_list, min_size=25000, save_path='/tmp', update_mode=False):
         """
         Initialize the image fetcher.
         """
@@ -79,13 +78,15 @@ class CloseupImageFetcher(object):
         self._min_size = min_size
         self._save_path = save_path
         self._widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
+        self._update_mode = update_mode
+        self._duplicate = False
 
     def fetchImages(self):
         # Counter
         i = 1
         # If a image already exist count up
         images_exists_count = 0
-        # Create directory where the images will bi saved
+        # Create directory where the images will be saved
         self._ensureSavePath()
 
         pbar = ProgressBar(widgets=self._widgets, maxval=len(self._closeup_image_info_list) + 1).start()
@@ -101,6 +102,9 @@ class CloseupImageFetcher(object):
                     self._saveImage(data, file_name)
                 else:
                     images_exists_count += 1
+                    if self._update_mode is True:
+                        self._setDuplicate(True)
+                        return True;
 
             pbar.update(i)
 
@@ -109,6 +113,14 @@ class CloseupImageFetcher(object):
         if images_exists_count > 0:
             print("")
             print("%i of %i images not downloaded because filename exists in savepath!") % (images_exists_count, len(self._closeup_image_info_list))
+
+        return False
+
+    def existsDuplicate(self):
+        return self._duplicate
+
+    def _setDuplicate(self, duplicate):
+        self._duplicate = duplicate
 
     def _fileExists(self, file_name):
         return os.path.exists(os.path.join(self._save_path, file_name))
@@ -172,9 +184,6 @@ class CloseupImageParser(object):
         img = CloseupImageInfo(img_src, img_description)
         return img
 
-    def get_image_list(self):
-        return self.images
-
     def parse_pin_list(self, images_uri_list):
         i = 1
         widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
@@ -187,6 +196,9 @@ class CloseupImageParser(object):
             self.images.append(img)
             pbar.update(i)
         pbar.finish()
+
+    def get_image_list(self):
+        return self.images
 
 
 class CloseupImageInfo(object):
@@ -224,20 +236,71 @@ class CloseupImageInfo(object):
 # Local methods
 ###############
 def save_page_count(save_path, page_count):
-    file = os.path.join(save_path, "page_count")
-    f = open(file, 'w')
+    _file = os.path.join(save_path, "page_count")
+    f = open(_file, 'w')
     f.write(str(page_count))
     f.close()
 
 def check_page_count(save_path):
-    file = os.path.join(save_path, "page_count")
-    if os.path.exists(file):
-        f = open(file, 'r')
+    _file = os.path.join(save_path, "page_count")
+    if os.path.exists(_file):
+        f = open(_file, 'r')
         c = f.read()
         f.close()
         return int(c)
     else:
         return 1
+
+def fetch_pin_list(board_url, page_no, useragent):
+    # Fetch html of a board and extract all /pin/ uri's which contains the big images
+    pbp = PinterestBoardParser()
+    board_html = requests.get(board_url + "?page=" + str(page_no), headers=useragent).text
+    pbp.parse_board(board_html)
+    return pbp.get_pin_uris()
+
+def generate_big_images_list(save_description, useragent, pin_list):
+    cip = CloseupImageParser(save_description, useragent)
+    cip.parse_pin_list(pin_list)
+    return cip.get_image_list()
+
+def generate_save_path(savepath, board_url):
+    split_path = board_url.split(os.sep)
+    split_path.pop()
+    board_name = split_path.pop()
+    pinterest_user = split_path.pop()
+    return os.path.join(savepath, pinterest_user, board_name)
+
+def download(board_url, save_path, useragent, save_description, page_no=1, update_mode=False):
+
+    # Parse every page of a board as long as we get 50 images per page otherwise stop
+    while True:
+        print("Parsing html from: %s?page=%i") % (board_url, page_no)
+        print("")
+
+        # Get all pins for a page
+        pin_list = fetch_pin_list(board_url, page_no, useragent)
+
+        # Now fetch every page which contains a big image and generate a list of the big images
+        print("Parsing html of all closeup uri's' from page %i:") % page_no
+        big_image_list = generate_big_images_list(save_description, useragent, pin_list)
+        print("")
+
+        # Now we can fetch the big/closeup images
+        print("Now fetching big images...")
+        cif = CloseupImageFetcher(big_image_list, save_path=save_path, update_mode=update_mode)
+        finished = cif.fetchImages()
+        print("")
+
+        # If the last board page returned less than 50 uri's or in update mode a picture
+        # was already downloaded we finish here...
+        if len(pin_list) != 50 or finished == True:
+            print("Search done!\n")
+            break
+
+        if save_pagecount:
+            save_page_count(os.path.join(save_path), str(page_no))
+
+        page_no += 1
 
 
 if __name__ == "__main__":
@@ -246,7 +309,7 @@ if __name__ == "__main__":
     headers_firefox_linux = {'User-Agent': 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:16.0) Gecko/20100101 Firefox/16.0'}
 
     # Parse commandline options
-    ap = argparse.ArgumentParser(description="Fetch pinterest images. USE THIS SCRIPT CAREFULLY! YOU POTENTIALLY GENERATE A LOT OF LOAD ON THE pinterest.com SERVER!",
+    ap = argparse.ArgumentParser(description="Fetch pinterest images. USE THIS SCRIPT CAREFULLY! YOU POTENTIALLY GENERATE A LOT OF LOAD ON THE pinterest.com SERVER and will be locked out!",
                                version="%(prog)s 0.0.6")
     ap.add_argument('--boardurl', '-b', dest='boardurl', nargs=1, help='The board url to download (e.g. http://pinterest.com/<username>/<boardname>/)')
     ap.add_argument('--savepath', '-p', dest='savepath', default=os.sep + 'tmp', help='where to save the images (default: ' + os.sep + 'tmp)')
@@ -257,18 +320,21 @@ if __name__ == "__main__":
     ap.add_argument('-l', dest='shuffle_ua', default=False, action="store_true", help='Choose random useragent before fetching next page.')
     ap.add_argument('-o', dest='override', default=False, action="store_true", help='If a image is already downloaded (exists in savepath) it will not be downloaded again. This option forces the download.')
     ap.add_argument('-s', dest='save_description', default=False, action="store_true", help='Saves the image description like original location as a JSON file parallel to the image.')
+    ap.add_argument('--update', '-t', dest='update_path', default=None, nargs=1, help='Fetch latest pictures of that path e.g. /user/board/')
 
     args = ap.parse_args()
 
     # Board url
     if args.boardurl is not None:
         board_url = args.boardurl[0]
+        if not board_url.endswith("/"):
+            board_url = board_url + "/"
+    elif args.update_path is not None:
+        update_path = args.update_path[0]
+        if not update_path.endswith("/"):
+            update_path = update_path + "/"
     else:
-        print("No arguments for option --boardurl specified!")
-        sys.exit(1)
-
-    if not board_url.endswith("/"):
-        print("boardurl must end with /!")
+        print("No arguments for option --boardurl or --update specified!")
         sys.exit(1)
 
     # Save last page
@@ -313,47 +379,29 @@ if __name__ == "__main__":
     else:
         save_description = False
 
+    # Construct board_url if in update mode
+    if args.update_path is not None:
+        _update_path_tmp = update_path.split("/")
+        _user = _update_path_tmp[len(_update_path_tmp) - 3]
+        _board = _update_path_tmp[len(_update_path_tmp) - 2]
+        board_url = "http://pinterest.com/" + _user + "/" + _board + "/"
+        savepath = update_path
+    else:
+        savepath = args.savepath
+
     print("")
 
     # Where to save our closeup images
-    split_path = board_url.split(os.sep)
-    split_path.pop()
-    board_name = split_path.pop()
-    pinterest_user = split_path.pop()
-    save_path = os.path.join(args.savepath, pinterest_user, board_name)
+    if args.update_path is not None:
+        save_path = savepath
+    else:
+        save_path = generate_save_path(savepath, board_url)
 
     # Check if we saved page count during the last run (returns 1 if no state exists)
     page_no = check_page_count(save_path)
 
-    # Parse every page of a board as long as we get 50 images per page otherwise stop
-    while True:
-        print("Parsing html from: %s?page=%i") % (board_url, page_no)
-        print("")
-
-        # Fetch html of a board and extract all /pin/ uri's which contains the big images
-        pbp = PinterestBoardParser()
-        board_html = requests.get(board_url + "?page=" + str(page_no), headers=headers_firefox_linux).text
-        pbp.parse_board(board_html)
-
-        # Now get fetch every page which contains a big image and generate a list of the big images
-        print("Parsing html of all closeup uri's' from page %i:") % page_no
-        cip = CloseupImageParser(save_description, headers_firefox_linux)
-        cip.parse_pin_list(pbp.get_pin_uris())
-        print("")
-
-        # Now we can fetch the big/closeup images
-        print("Now fetching big images...")
-        cif = CloseupImageFetcher(cip.get_image_list(), save_path=save_path)
-        cif.fetchImages()
-        print("")
-
-        # If the last board page returned less than 50 uri's we finish here...
-        if len(pbp.get_pin_uris()) != 50:
-            print("Search done!\n")
-            break
-
-
-        if save_pagecount:
-            save_page_count(os.path.join(save_path), str(page_no))
-
-        page_no += 1
+    # If update mode...
+    if args.update_path is not None:
+        download(board_url, save_path, useragent, save_description, 1, True)
+    else:
+        download(board_url, save_path, useragent, save_description, page_no)
