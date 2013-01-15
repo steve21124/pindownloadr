@@ -70,7 +70,7 @@ class CloseupImageFetcher(object):
     The only usefull and public method is fetchImages()
     """
 
-    def __init__(self, closeup_image_info_list, min_size=25000, save_path='/tmp', update_mode=False):
+    def __init__(self, closeup_image_info_list, min_size=25000, save_path='/tmp'):
         """
         Initialize the image fetcher.
         """
@@ -78,20 +78,22 @@ class CloseupImageFetcher(object):
         self._min_size = min_size
         self._save_path = save_path
         self._widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
-        self._update_mode = update_mode
-        self._duplicate = False
 
     def fetchImages(self):
-        # Counter
+        # Counter for progressbar
         i = 1
+
         # If a image already exist count up
         images_exists_count = 0
+
         # Create directory where the images will be saved
         self._ensureSavePath()
 
         pbar = ProgressBar(widgets=self._widgets, maxval=len(self._closeup_image_info_list) + 1).start()
         for closeup_image_info in self._closeup_image_info_list:
+            # Counter for progressbar
             i += 1
+
             # TODO: Sometimes None, don't know why currently. Never had this problem with HTMLParser...
             if closeup_image_info.source is not None:
                 file_name = self._filenameFromUrl(closeup_image_info.source)
@@ -102,9 +104,6 @@ class CloseupImageFetcher(object):
                     self._saveImage(data, file_name)
                 else:
                     images_exists_count += 1
-                    if self._update_mode is True:
-                        self._setDuplicate(True)
-                        return True;
 
             pbar.update(i)
 
@@ -115,12 +114,6 @@ class CloseupImageFetcher(object):
             print("%i of %i images not downloaded because filename exists in savepath!") % (images_exists_count, len(self._closeup_image_info_list))
 
         return False
-
-    def existsDuplicate(self):
-        return self._duplicate
-
-    def _setDuplicate(self, duplicate):
-        self._duplicate = duplicate
 
     def _fileExists(self, file_name):
         return os.path.exists(os.path.join(self._save_path, file_name))
@@ -146,6 +139,54 @@ class CloseupImageFetcher(object):
 
     def _getContentLength(self, url):
         return int(requests.head(url).headers['Content-Length'])
+
+
+class CloseupImageUpdater(CloseupImageFetcher):
+
+    def __init__(self, closeup_image_info_list, save_path, min_size=25000):
+        """
+        Initialize the image updater.
+        """
+        self._closeup_image_info_list = closeup_image_info_list
+        self._min_size = min_size
+        self._save_path = save_path
+        self._widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
+
+    def fetchImages(self):
+        # Counter for progressbar
+        i = 1
+
+        # Create directory where the images will be saved
+        self._ensureSavePath()
+
+        pbar = ProgressBar(widgets=self._widgets, maxval=len(self._closeup_image_info_list) + 1).start()
+        for closeup_image_info in self._closeup_image_info_list:
+            # Counter for progressbar
+            i =+ 1
+
+            # TODO: Sometimes None, don't know why currently. Never had this problem with HTMLParser...
+            if closeup_image_info.source is not None:
+                file_name = self._filenameFromUrl(closeup_image_info.source)
+
+                if not self._fileExists(file_name):
+                    u = urllib.urlopen(closeup_image_info.source)
+                    data = u.read()
+                    self._saveImage(data, file_name)
+                else:
+                    print("Update finished!")
+                    return True;
+
+            pbar.update(i)
+
+        pbar.finish()
+
+        return False
+
+    def existsDuplicate(self):
+        return self._duplicate
+
+    def _setDuplicate(self, duplicate):
+        self._duplicate = duplicate
 
 
 class PinterestBoardParser(object):
@@ -287,18 +328,47 @@ def download(board_url, save_path, useragent, save_description, page_no=1, updat
 
         # Now we can fetch the big/closeup images
         print("Now fetching big images...")
-        cif = CloseupImageFetcher(big_image_list, save_path=save_path, update_mode=update_mode)
-        finished = cif.fetchImages()
+        cif = CloseupImageFetcher(big_image_list, save_path=save_path)
+        cif.fetchImages()
         print("")
 
-        # If the last board page returned less than 50 uri's or in update mode a picture
-        # was already downloaded we finish here...
-        if len(pin_list) != 50 or finished == True:
+        # If the last board page returned less than 50 uri's we finish here...
+        if len(pin_list) != 50:
             print("Search done!\n")
             break
 
         if save_pagecount:
             save_page_count(os.path.join(save_path), str(page_no))
+
+        page_no += 1
+
+def update(board_url, save_path, useragent, save_description):
+    # We always start from page 1 in update mode
+    page_no = 1
+
+    # Parse every page of a board as long as we get a duplicate image...
+    while True:
+        print("Parsing html from: %s?page=%i") % (board_url, page_no)
+        print("")
+
+        # Get all pins for a page
+        pin_list = fetch_pin_list(board_url, page_no, useragent)
+
+        # Now fetch every page which contains a big image and generate a list of the big images
+        print("Parsing html of all closeup uri's' from page %i:") % page_no
+        big_image_list = generate_big_images_list(save_description, useragent, pin_list)
+        print("")
+
+        # Now we can fetch the big/closeup images
+        print("Now fetching big images...")
+        cif = CloseupImageUpdater(big_image_list, save_path=save_path)
+        finished = cif.fetchImages()
+        print("")
+
+        # If the last board page returned less than 50 uri'swe finish here...
+        if len(pin_list) != 50 or finished:
+            print("Search done!\n")
+            break
 
         page_no += 1
 
@@ -402,6 +472,6 @@ if __name__ == "__main__":
 
     # If update mode...
     if args.update_path is not None:
-        download(board_url, save_path, useragent, save_description, 1, True)
+        update(board_url, save_path, useragent, save_description)
     else:
         download(board_url, save_path, useragent, save_description, page_no)
