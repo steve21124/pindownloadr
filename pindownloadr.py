@@ -42,7 +42,7 @@ If you use Python < 2.7 you may need also argparse:
 pip install argparse
 
 TODO: Some options currently not implemented
-TODO: Not much error handling implemented. So be prepared for strange errors! ;-)
+TODO: Not much error handling implemented. Be prepared for strange errors! ;-)
 TODO: Needs more documentation.
 """
 
@@ -80,34 +80,25 @@ class CloseupImageFetcher(object):
         self._widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
 
     def fetchImages(self):
-        # Counter for progressbar
-        i = 1
-
         # If a image already exist count up
         images_exists_count = 0
 
         # Create directory where the images will be saved
         self._ensureSavePath()
 
-        pbar = ProgressBar(widgets=self._widgets, maxval=len(self._closeup_image_info_list) + 1).start()
         for closeup_image_info in self._closeup_image_info_list:
-            # Counter for progressbar
-            i += 1
-
-            # TODO: Sometimes None, don't know why currently. Never had this problem with HTMLParser...
+            # TODO: Sometimes None, don't know why currently.
+            # Never had this problem with HTMLParser...
             if closeup_image_info.source is not None:
                 file_name = self._filenameFromUrl(closeup_image_info.source)
 
                 if not self._fileExists(file_name):
+                    print("Downloading: %s") % file_name
                     u = urllib.urlopen(closeup_image_info.source)
                     data = u.read()
                     self._saveImage(data, file_name)
                 else:
                     images_exists_count += 1
-
-            pbar.update(i)
-
-        pbar.finish()
 
         if images_exists_count > 0:
             print("")
@@ -153,32 +144,30 @@ class CloseupImageUpdater(CloseupImageFetcher):
         self._widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
 
     def fetchImages(self):
-        # Counter for progressbar
-        i = 1
+        # If a image already exist count up and after we got 10 images that
+        # alread exists we stop updating
+        images_exists_count = 0
+        images_exists_count_max = 10
 
         # Create directory where the images will be saved
         self._ensureSavePath()
 
-        pbar = ProgressBar(widgets=self._widgets, maxval=len(self._closeup_image_info_list) + 1).start()
         for closeup_image_info in self._closeup_image_info_list:
-            # Counter for progressbar
-            i =+ 1
-
-            # TODO: Sometimes None, don't know why currently. Never had this problem with HTMLParser...
+            # TODO: Sometimes None, don't know why currently. Never had this
+            # problem with HTMLParser...
             if closeup_image_info.source is not None:
                 file_name = self._filenameFromUrl(closeup_image_info.source)
 
                 if not self._fileExists(file_name):
+                    print("Downloading: %s") % file_name
                     u = urllib.urlopen(closeup_image_info.source)
                     data = u.read()
                     self._saveImage(data, file_name)
                 else:
-                    print("Update finished!")
-                    return True;
-
-            pbar.update(i)
-
-        pbar.finish()
+                    images_exists_count += 1
+                    if images_exists_count > images_exists_count_max:
+                        print("Update finished!")
+                        return True
 
         return False
 
@@ -212,7 +201,8 @@ class PinterestBoardParser(object):
 class CloseupImageParser(object):
 
     def __init__(self, url, save_description=False, headers=None):
-        if not headers: headers = {}
+        if not headers:
+            headers = {}
         self.url = url
         self.images = []
         self.headers = headers
@@ -282,6 +272,7 @@ def save_page_count(save_path, page_count):
     f.write(str(page_count))
     f.close()
 
+
 def check_page_count(save_path):
     _file = os.path.join(save_path, "page_count")
     if os.path.exists(_file):
@@ -292,17 +283,21 @@ def check_page_count(save_path):
     else:
         return 1
 
+
 def fetch_pin_list(board_url, page_no, useragent):
-    # Fetch html of a board and extract all /pin/ uri's which contains the big images
+    # Fetch html of a board and extract all /pin/ uri's which contains
+    # the big images
     pbp = PinterestBoardParser()
     board_html = requests.get(board_url + "?page=" + str(page_no), headers=useragent).text
     pbp.parse_board(board_html)
     return pbp.get_pin_uris()
 
+
 def generate_big_images_list(save_description, useragent, pin_list):
     cip = CloseupImageParser(save_description, useragent)
     cip.parse_pin_list(pin_list)
     return cip.get_image_list()
+
 
 def generate_save_path(savepath, board_url):
     split_path = board_url.split(os.sep)
@@ -311,9 +306,11 @@ def generate_save_path(savepath, board_url):
     pinterest_user = split_path.pop()
     return os.path.join(savepath, pinterest_user, board_name)
 
-def download(board_url, save_path, useragent, save_description, page_no=1, update_mode=False):
 
-    # Parse every page of a board as long as we get 50 images per page otherwise stop
+def download(board_url, save_path, useragent, save_description, page_no=1):
+
+    # Parse every page of a board as long as we get 50 images per page
+    # otherwise stop
     while True:
         print("Parsing html from: %s?page=%i") % (board_url, page_no)
         print("")
@@ -321,7 +318,8 @@ def download(board_url, save_path, useragent, save_description, page_no=1, updat
         # Get all pins for a page
         pin_list = fetch_pin_list(board_url, page_no, useragent)
 
-        # Now fetch every page which contains a big image and generate a list of the big images
+        # Now fetch every page which contains a big image and generate a
+        # list of the big images
         print("Parsing html of all closeup uri's' from page %i:") % page_no
         big_image_list = generate_big_images_list(save_description, useragent, pin_list)
         print("")
@@ -342,6 +340,7 @@ def download(board_url, save_path, useragent, save_description, page_no=1, updat
 
         page_no += 1
 
+
 def update(board_url, save_path, useragent, save_description):
     # We always start from page 1 in update mode
     page_no = 1
@@ -354,7 +353,8 @@ def update(board_url, save_path, useragent, save_description):
         # Get all pins for a page
         pin_list = fetch_pin_list(board_url, page_no, useragent)
 
-        # Now fetch every page which contains a big image and generate a list of the big images
+        # Now fetch every page which contains a big image and generate
+        # a list of the big images
         print("Parsing html of all closeup uri's' from page %i:") % page_no
         big_image_list = generate_big_images_list(save_description, useragent, pin_list)
         print("")
@@ -365,7 +365,7 @@ def update(board_url, save_path, useragent, save_description):
         finished = cif.fetchImages()
         print("")
 
-        # If the last board page returned less than 50 uri'swe finish here...
+        # If the last board page returned less than 50 uri's we finish here...
         if len(pin_list) != 50 or finished:
             print("Search done!\n")
             break
