@@ -221,7 +221,9 @@ class CloseupImageParser(object):
         pbar = ProgressBar(widgets=widgets, maxval=len(images_uri_list) + 1).start()
         for image_uri in images_uri_list:
             i += 1
-            closeup_image_html = requests.get("http://pinterest.com" + image_uri, headers=self.headers).text
+            r = requests.get("http://pinterest.com" + image_uri, headers=self.headers, cookies=cookies)
+            closeup_image_html = r.text
+
             img = self.parseCloseupImage(closeup_image_html)
             img.uri = image_uri
             self.images.append(img)
@@ -288,7 +290,7 @@ def fetch_pin_list(board_url, page_no, useragent):
     # Fetch html of a board and extract all /pin/ uri's which contains
     # the big images
     pbp = PinterestBoardParser()
-    board_html = requests.get(board_url + "?page=" + str(page_no), headers=useragent).text
+    board_html = requests.get(board_url + "?page=" + str(page_no), headers=useragent, cookies=cookies).text
     pbp.parse_board(board_html)
     return pbp.get_pin_uris()
 
@@ -305,6 +307,18 @@ def generate_save_path(savepath, board_url):
     board_name = split_path.pop()
     pinterest_user = split_path.pop()
     return os.path.join(savepath, pinterest_user, board_name)
+
+def read_cookies(path):
+    cookies = dict()
+    cookies_file = os.path.join(path, "cookies.txt")
+    if os.path.exists(cookies_file):
+        _cookies = open(cookies_file, "r").read().split("\n")
+        for _cookie in _cookies:
+            if len(_cookie) > 1:
+                key, value = _cookie.split("=", 1)
+                cookies[key] = value
+
+    return cookies
 
 
 def download(board_url, save_path, useragent, save_description, page_no=1):
@@ -375,8 +389,12 @@ def update(board_url, save_path, useragent, save_description):
 
 if __name__ == "__main__":
 
+    # Read cookie file if it exists
+    cookies = read_cookies(os.getcwd())
+
     # HTTP Header for our "browser"
     headers_firefox_linux = {'User-Agent': 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:16.0) Gecko/20100101 Firefox/16.0'}
+    # headers_firefox_windows = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; Win64; x64; rv:16.0.1) Gecko/20121011 Firefox/16.0.1'}
 
     # Parse commandline options
     ap = argparse.ArgumentParser(description="Fetch pinterest images. USE THIS SCRIPT CAREFULLY! YOU POTENTIALLY GENERATE A LOT OF LOAD ON THE pinterest.com SERVER and will be locked out!",
@@ -391,6 +409,7 @@ if __name__ == "__main__":
     ap.add_argument('-o', dest='override', default=False, action="store_true", help='If a image is already downloaded (exists in savepath) it will not be downloaded again. This option forces the download.')
     ap.add_argument('-s', dest='save_description', default=False, action="store_true", help='Saves the image description like original location as a JSON file parallel to the image.')
     ap.add_argument('--update', '-t', dest='update_path', default=None, nargs=1, help='Fetch latest pictures of that path e.g. /user/board/')
+    # ap.add_argument('--cookiefile', dest='cookie_file', default=None, nargs=1, help='If you want to fetch your secret boards you need your private cookie stored in this file.')
 
     args = ap.parse_args()
 
