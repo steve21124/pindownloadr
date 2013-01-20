@@ -8,6 +8,27 @@ The only parameter needed is the url of the board e.g.:
 
     pindownloadr -b http://pinterest.com/<username>/<boardname>/
     pindownloadr -b http://pinterest.com/johnfernandez/outer-limits/
+    
+You can even download secret boards now. Create a file "cookies.txt" in your
+working directory. Login with your favourite browser into pinterest.com and
+get the cookies for e.g. from a cookie manager or from the developer tools
+(chrome) or HTTP live header extenstion (firefox). "cookies.txt" should look
+like this (you have to add the values after = of course...):
+
+view=
+_pinterest_sess=
+_pinterest_email_referral=
+memo=
+csrftoken=
+viewParameter=
+viewType=
+element=
+__utma=
+__utmb=
+__utmc=
+__utmz=
+__utmv=
+component=
 
 For more options run script with -h or --help.
 
