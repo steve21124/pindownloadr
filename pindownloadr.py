@@ -286,17 +286,17 @@ def check_page_count(save_path):
         return 1
 
 
-def fetch_pin_list(board_url, page_no, useragent):
+def fetch_pin_list(board_url, page_no, http_request_headers):
     # Fetch html of a board and extract all /pin/ uri's which contains
     # the big images
     pbp = PinterestBoardParser()
-    board_html = requests.get(board_url + "?page=" + str(page_no), headers=useragent, cookies=cookies).text
+    board_html = requests.get(board_url + "?page=" + str(page_no), headers=http_request_headers, cookies=cookies).text
     pbp.parse_board(board_html)
     return pbp.get_pin_uris()
 
 
-def generate_big_images_list(save_description, useragent, pin_list):
-    cip = CloseupImageParser(save_description, useragent)
+def generate_big_images_list(save_description, http_request_headers, pin_list):
+    cip = CloseupImageParser(save_description, headers=http_request_headers)
     cip.parse_pin_list(pin_list)
     return cip.get_image_list()
 
@@ -321,7 +321,7 @@ def read_cookies(path):
     return cookies
 
 
-def download(board_url, save_path, useragent, save_description, page_no=1):
+def download(board_url, save_path, http_request_headers, save_description, page_no=1):
 
     # Parse every page of a board as long as we get 50 images per page
     # otherwise stop
@@ -330,12 +330,12 @@ def download(board_url, save_path, useragent, save_description, page_no=1):
         print("")
 
         # Get all pins for a page
-        pin_list = fetch_pin_list(board_url, page_no, useragent)
+        pin_list = fetch_pin_list(board_url, page_no, http_request_headers)
 
         # Now fetch every page which contains a big image and generate a
         # list of the big images
         print("Parsing html of all closeup uri's' from page %i:") % page_no
-        big_image_list = generate_big_images_list(save_description, useragent, pin_list)
+        big_image_list = generate_big_images_list(save_description, http_request_headers, pin_list)
         print("")
 
         # Now we can fetch the big/closeup images
@@ -355,7 +355,7 @@ def download(board_url, save_path, useragent, save_description, page_no=1):
         page_no += 1
 
 
-def update(board_url, save_path, useragent, save_description):
+def update(board_url, save_path, http_request_headers, save_description):
     # We always start from page 1 in update mode
     page_no = 1
 
@@ -365,12 +365,12 @@ def update(board_url, save_path, useragent, save_description):
         print("")
 
         # Get all pins for a page
-        pin_list = fetch_pin_list(board_url, page_no, useragent)
+        pin_list = fetch_pin_list(board_url, page_no, http_request_headers)
 
         # Now fetch every page which contains a big image and generate
         # a list of the big images
         print("Parsing html of all closeup uri's' from page %i:") % page_no
-        big_image_list = generate_big_images_list(save_description, useragent, pin_list)
+        big_image_list = generate_big_images_list(save_description, http_request_headers, pin_list)
         print("")
 
         # Now we can fetch the big/closeup images
@@ -389,12 +389,11 @@ def update(board_url, save_path, useragent, save_description):
 
 if __name__ == "__main__":
 
-    # Read cookie file if it exists
-    cookies = read_cookies(os.getcwd())
-
     # HTTP Header for our "browser"
-    headers_firefox_linux = {'User-Agent': 'User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:16.0) Gecko/20100101 Firefox/16.0'}
-    # headers_firefox_windows = {'User-Agent': 'Mozilla/5.0 (Windows NT 6.2; Win64; x64; rv:16.0.1) Gecko/20121011 Firefox/16.0.1'}
+    http_request_header={'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:18.0) Gecko/20100101 Firefox/18.0',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    'Accept-Encoding': 'gzip, deflate',
+                    'Accept-Language': 'en-US,en;q=0.5'}
 
     # Parse commandline options
     ap = argparse.ArgumentParser(description="Fetch pinterest images. USE THIS SCRIPT CAREFULLY! YOU POTENTIALLY GENERATE A LOT OF LOAD ON THE pinterest.com SERVER and will be locked out!",
@@ -403,15 +402,16 @@ if __name__ == "__main__":
     ap.add_argument('--savepath', '-p', dest='savepath', default=os.sep + 'tmp', help='where to save the images (default: ' + os.sep + 'tmp)')
     ap.add_argument('-c', dest='save_pagecount', default=False, action="store_true", help='Very big boards may take to long to get content in one shot. This saves last page and continue from there next time.')
     ap.add_argument('--fetchdelay', '-f', dest='fetchdelay', help='Delay time in millisec. before fetching next pin.')
-    ap.add_argument('--useragent', '-u', dest='useragent', default='firefox_linux', help='Choose from: firefox_linux (more to come...)')
-    ap.add_argument('--useragent-string', '-a', dest='useragent_string', help='Supply your own useragent string.')
-    ap.add_argument('-l', dest='shuffle_ua', default=False, action="store_true", help='Choose random useragent before fetching next page.')
+    ap.add_argument('-l', dest='shuffle_ua', default=False, action="store_true", help='Choose random useragent.')
     ap.add_argument('-o', dest='override', default=False, action="store_true", help='If a image is already downloaded (exists in savepath) it will not be downloaded again. This option forces the download.')
     ap.add_argument('-s', dest='save_description', default=False, action="store_true", help='Saves the image description like original location as a JSON file parallel to the image.')
     ap.add_argument('--update', '-t', dest='update_path', default=None, nargs=1, help='Fetch latest pictures of that path e.g. /user/board/')
-    # ap.add_argument('--cookiefile', dest='cookie_file', default=None, nargs=1, help='If you want to fetch your secret boards you need your private cookie stored in this file.')
+    ap.add_argument('--cookiefile', dest='cookie_file', default=os.getcwd(), nargs=1, help='If you want to fetch your secret boards you need your private cookie stored in this file.')
 
     args = ap.parse_args()
+
+    # Read cookie file if it exists
+    cookies = read_cookies(args.cookie_file)
 
     # Board url
     if args.boardurl is not None:
@@ -435,20 +435,6 @@ if __name__ == "__main__":
     # Fetch delay
     if args.fetchdelay is not None:
         fetchdelay = args.fetchdelay
-
-    # User agent
-    if args.useragent is not None:
-        if args.useragent == "firefox_linux":
-            useragent = headers_firefox_linux
-        else:
-            print("No such useragent!: %s") % args.useragent
-            sys.exit(1)
-    else:
-        useragent = headers_firefox_linux
-
-    # User agent string
-    if args.useragent_string is not None:
-        useragent = {args.useragent_string}
 
     # Shuffle the useragentd
     if args.shuffle_ua:
@@ -491,6 +477,6 @@ if __name__ == "__main__":
 
     # If update mode...
     if args.update_path is not None:
-        update(board_url, save_path, useragent, save_description)
+        update(board_url, save_path, http_request_header, save_description)
     else:
-        download(board_url, save_path, useragent, save_description, page_no)
+        download(board_url, save_path, http_request_header, save_description, page_no)
