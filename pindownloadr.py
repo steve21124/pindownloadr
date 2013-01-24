@@ -312,11 +312,12 @@ def read_cookies(path):
     cookies = dict()
     cookies_file = os.path.join(path, "cookies.txt")
     if os.path.exists(cookies_file):
-        _cookies = open(cookies_file, "r").read().split("\n")
-        for _cookie in _cookies:
-            if len(_cookie) > 1:
-                key, value = _cookie.split("=", 1)
-                cookies[key] = value
+        with open(cookies_file, "r") as c:
+            _cookies = c.read().split("\n")
+            for _cookie in _cookies:
+                if len(_cookie) > 1:
+                    key, value = _cookie.split("=", 1)
+                    cookies[key] = value
 
     return cookies
 
