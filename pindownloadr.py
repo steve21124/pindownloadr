@@ -67,7 +67,7 @@ class CloseupImageFetcher(object):
     The CloseupImageFetcher takes a list of image urls and download the
     images into the save_path.
 
-    The only usefull and public method is fetchImages()
+    The only usefull and public method is fetch_images()
     """
 
     def __init__(self, closeup_image_info_list, min_size=25000, save_path='/tmp'):
@@ -79,24 +79,24 @@ class CloseupImageFetcher(object):
         self._save_path = save_path
         self._widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
 
-    def fetchImages(self):
+    def fetch_images(self):
         # If a image already exist count up
         images_exists_count = 0
 
         # Create directory where the images will be saved
-        self._ensureSavePath()
+        self._ensure_save_path()
 
         for closeup_image_info in self._closeup_image_info_list:
             # TODO: Sometimes None, don't know why currently.
             # Never had this problem with HTMLParser...
             if closeup_image_info.source is not None:
-                file_name = self._filenameFromUrl(closeup_image_info.source)
+                file_name = self._filename_from_url(closeup_image_info.source)
 
-                if not self._fileExists(file_name):
+                if not self._file_exists(file_name):
                     print("Downloading: %s") % file_name
                     u = urllib.urlopen(closeup_image_info.source)
                     data = u.read()
-                    self._saveImage(data, file_name)
+                    self._save_image(data, file_name)
                 else:
                     images_exists_count += 1
 
@@ -106,10 +106,10 @@ class CloseupImageFetcher(object):
 
         return False
 
-    def _fileExists(self, file_name):
+    def _file_exists(self, file_name):
         return os.path.exists(os.path.join(self._save_path, file_name))
 
-    def _ensureSavePath(self):
+    def _ensure_save_path(self):
         try:
             os.makedirs(self._save_path)
         except OSError as exc:  # Python >2.5
@@ -118,17 +118,17 @@ class CloseupImageFetcher(object):
             else:
                 raise
 
-    def _saveImage(self, data, file_name):
+    def _save_image(self, data, file_name):
         file2save = os.path.join(self._save_path, file_name)
         f = open(file2save, 'wb')
         f.write(data)
         f.close()
 
-    def _filenameFromUrl(self, url):
+    def _filename_from_url(self, url):
         split_path = url.split(os.sep)
         return split_path.pop()
 
-    def _getContentLength(self, url):
+    def _get_content_length(self, url):
         return int(requests.head(url).headers['Content-Length'])
 
 
@@ -143,26 +143,26 @@ class CloseupImageUpdater(CloseupImageFetcher):
         self._save_path = save_path
         self._widgets = [Bar('>'), ' ', ETA(), ' ', ReverseBar('<')]
 
-    def fetchImages(self):
+    def fetch_images(self):
         # If a image already exist count up and after we got 10 images that
         # alread exists we stop updating
         images_exists_count = 0
         images_exists_count_max = 10
 
         # Create directory where the images will be saved
-        self._ensureSavePath()
+        self._ensure_save_path()
 
         for closeup_image_info in self._closeup_image_info_list:
             # TODO: Sometimes None, don't know why currently. Never had this
             # problem with HTMLParser...
             if closeup_image_info.source is not None:
-                file_name = self._filenameFromUrl(closeup_image_info.source)
+                file_name = self._filename_from_url(closeup_image_info.source)
 
-                if not self._fileExists(file_name):
+                if not self._file_exists(file_name):
                     print("Downloading: %s") % file_name
                     u = urllib.urlopen(closeup_image_info.source)
                     data = u.read()
-                    self._saveImage(data, file_name)
+                    self._save_image(data, file_name)
                 else:
                     images_exists_count += 1
                     if images_exists_count > images_exists_count_max:
@@ -171,10 +171,10 @@ class CloseupImageUpdater(CloseupImageFetcher):
 
         return False
 
-    def existsDuplicate(self):
+    def exists_duplicate(self):
         return self._duplicate
 
-    def _setDuplicate(self, duplicate):
+    def _set_duplicate(self, duplicate):
         self._duplicate = duplicate
 
 
@@ -208,7 +208,7 @@ class CloseupImageParser(object):
         self.headers = headers
         self.save_description = save_description
 
-    def parseCloseupImage(self, html):
+    def parse_closeup_image(self, html):
         j = PyQuery(html)
         img_src = j("#pinCloseupImage").attr("src")
         img_description = j(".description").text()
@@ -224,7 +224,7 @@ class CloseupImageParser(object):
             r = requests.get("http://pinterest.com" + image_uri, headers=self.headers, cookies=cookies)
             closeup_image_html = r.text
 
-            img = self.parseCloseupImage(closeup_image_html)
+            img = self.parse_closeup_image(closeup_image_html)
             img.uri = image_uri
             self.images.append(img)
             pbar.update(i)
@@ -342,7 +342,7 @@ def download(board_url, save_path, http_request_headers, save_description, page_
         # Now we can fetch the big/closeup images
         print("Now fetching big images...")
         cif = CloseupImageFetcher(big_image_list, save_path=save_path)
-        cif.fetchImages()
+        cif.fetch_images()
         print("")
 
         # If the last board page returned less than 50 uri's we finish here...
@@ -377,7 +377,7 @@ def update(board_url, save_path, http_request_headers, save_description):
         # Now we can fetch the big/closeup images
         print("Now fetching big images...")
         cif = CloseupImageUpdater(big_image_list, save_path=save_path)
-        finished = cif.fetchImages()
+        finished = cif.fetch_images()
         print("")
 
         # If the last board page returned less than 50 uri's we finish here...
