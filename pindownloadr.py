@@ -286,11 +286,15 @@ def check_page_count(save_path):
         return 1
 
 
-def fetch_pin_list(board_url, page_no, http_request_headers):
-    # Fetch html of a board and extract all /pin/ uri's which contains
-    # the big images
+def fetch_pin_list(url, page_no, http_headers):
+
+    """
+    Fetch the html code of a board and extract all /pin/ uri's which contains
+    the big images.
+    """
+
     pbp = PinterestBoardParser()
-    board_html = requests.get(board_url + "?page=" + str(page_no), headers=http_request_headers, cookies=cookies).text
+    board_html = requests.get(url + "?page=" + str(page_no), headers=http_headers, cookies=cookies).text
     pbp.parse_board(board_html)
     return pbp.get_pin_uris()
 
@@ -301,14 +305,33 @@ def generate_big_images_list(save_description, http_request_headers, pin_list):
     return cip.get_image_list()
 
 
-def generate_save_path(savepath, board_url):
-    split_path = board_url.split(os.sep)
+def generate_save_path(path, url):
+
+    """
+    Generates the os path where to save the pictures. It combines the path the
+    user has supplied with the pinterest username and the board name.
+
+    :param path:    the main path (e.g. /tmp)
+    :param url:     the pinterest url (e.g. http://pinterest.com/user/board/)
+    :return:        the path where the big pictures will be stored
+    """
+
+    split_path = url.split(os.sep)
     split_path.pop()
     board_name = split_path.pop()
     pinterest_user = split_path.pop()
-    return os.path.join(savepath, pinterest_user, board_name)
+    return os.path.join(path, pinterest_user, board_name)
+
 
 def read_cookies(path):
+
+    """
+    Reads cookies.txt in specified path if exists.
+
+    :param path:    the path where cookies.txt is stored
+    :return:        a dict (maybe empty)
+    """
+
     cookies = dict()
     cookies_file = os.path.join(path, "cookies.txt")
     if os.path.exists(cookies_file):
