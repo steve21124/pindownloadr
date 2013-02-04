@@ -84,19 +84,19 @@ class CloseupImageFetcher(object):
         images_exists_count = 0
 
         # Create directory where the images will be saved
-        self._ensure_save_path()
+        self.___ensure_save_path()
 
         for closeup_image_info in self._closeup_image_info_list:
             # TODO: Sometimes None, don't know why currently.
             # Never had this problem with HTMLParser...
             if closeup_image_info.source is not None:
-                file_name = self._filename_from_url(closeup_image_info.source)
+                file_name = self.__filename_from_url(closeup_image_info.source)
 
-                if not self._file_exists(file_name):
+                if not self.__file_exists(file_name):
                     print("Downloading: %s") % file_name
                     u = urllib.urlopen(closeup_image_info.source)
                     data = u.read()
-                    self._save_image(data, file_name)
+                    self.__save_image(data, file_name)
                 else:
                     images_exists_count += 1
 
@@ -106,10 +106,10 @@ class CloseupImageFetcher(object):
 
         return False
 
-    def _file_exists(self, file_name):
+    def __file_exists(self, file_name):
         return os.path.exists(os.path.join(self._save_path, file_name))
 
-    def _ensure_save_path(self):
+    def __ensure_save_path(self):
         try:
             os.makedirs(self._save_path)
         except OSError as exc:  # Python >2.5
@@ -118,17 +118,17 @@ class CloseupImageFetcher(object):
             else:
                 raise
 
-    def _save_image(self, data, file_name):
+    def __save_image(self, data, file_name):
         file2save = os.path.join(self._save_path, file_name)
         f = open(file2save, 'wb')
         f.write(data)
         f.close()
 
-    def _filename_from_url(self, url):
+    def __filename_from_url(self, url):
         split_path = url.split(os.sep)
         return split_path.pop()
 
-    def _get_content_length(self, url):
+    def __get_content_length(self, url):
         return int(requests.head(url).headers['Content-Length'])
 
 
@@ -150,19 +150,19 @@ class CloseupImageUpdater(CloseupImageFetcher):
         images_exists_count_max = 10
 
         # Create directory where the images will be saved
-        self._ensure_save_path()
+        self.__ensure_save_path()
 
         for closeup_image_info in self._closeup_image_info_list:
             # TODO: Sometimes None, don't know why currently. Never had this
             # problem with HTMLParser...
             if closeup_image_info.source is not None:
-                file_name = self._filename_from_url(closeup_image_info.source)
+                file_name = self.__filename_from_url(closeup_image_info.source)
 
-                if not self._file_exists(file_name):
+                if not self.__file_exists(file_name):
                     print("Downloading: %s") % file_name
                     u = urllib.urlopen(closeup_image_info.source)
                     data = u.read()
-                    self._save_image(data, file_name)
+                    self.__save_image(data, file_name)
                 else:
                     images_exists_count += 1
                     if images_exists_count > images_exists_count_max:
