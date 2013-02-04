@@ -56,6 +56,8 @@ import argparse
 
 from pyquery import PyQuery
 
+from os.path import expanduser
+
 from progressbar import AnimatedMarker, Bar, BouncingBar, Counter, ETA,\
                         FileTransferSpeed, FormatLabel, Percentage,\
                         ProgressBar, ReverseBar, RotatingMarker,\
@@ -84,7 +86,7 @@ class CloseupImageFetcher(object):
         images_exists_count = 0
 
         # Create directory where the images will be saved
-        self.___ensure_save_path()
+        self.__ensure_save_path()
 
         for closeup_image_info in self._closeup_image_info_list:
             # TODO: Sometimes None, don't know why currently.
@@ -430,12 +432,12 @@ if __name__ == "__main__":
     ap.add_argument('-o', dest='override', default=False, action="store_true", help='If a image is already downloaded (exists in savepath) it will not be downloaded again. This option forces the download.')
     ap.add_argument('-s', dest='save_description', default=False, action="store_true", help='Saves the image description like original location as a JSON file parallel to the image.')
     ap.add_argument('--update', '-t', dest='update_path', default=None, nargs=1, help='Fetch latest pictures of that path e.g. /user/board/')
-    ap.add_argument('--cookiefile', dest='cookie_file', default=os.getcwd(), nargs=1, help='If you want to fetch your secret boards you need your private cookie stored in this file.')
+    ap.add_argument('--cookiepath', dest='cookie_path', default=expanduser("~"), nargs=1, help='If you want to fetch your secret boards you need your private pinterest cookies stored in this path as cookies.txt . Default: $HOME/.pindownloadr/')
 
     args = ap.parse_args()
 
     # Read cookie file if it exists
-    cookies = read_cookies(args.cookie_file)
+    cookies = read_cookies(os.path.join(args.cookie_path, ".pindownloadr"))
 
     # Board url
     if args.boardurl is not None:
